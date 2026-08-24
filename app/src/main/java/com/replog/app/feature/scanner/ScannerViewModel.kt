@@ -71,7 +71,7 @@ class ScannerViewModel @Inject constructor(
         }
     }
 
-    private fun scanErrorHint(e: Exception): String =
+    private fun scanErrorHint(e: Throwable): String =
         if (e is UnsupportedOperationException || e.message?.contains("backend", ignoreCase = true) == true ||
             e.message?.contains("Failed to connect", ignoreCase = true) == true ||
             e.message?.contains("Unable to resolve", ignoreCase = true) == true
@@ -100,9 +100,9 @@ class ScannerViewModel @Inject constructor(
         return Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
     }
 
-    fun updateFood(index: Int, transform: (DetectedFood) -> DetectedFood) {
+    fun updateFood(index: Int, food: DetectedFood) {
         _state.update { s ->
-            s.copy(foods = s.foods.mapIndexed { i, f -> if (i == index) transform(f) else f })
+            s.copy(foods = s.foods.mapIndexed { i, f -> if (i == index) food else f })
         }
     }
 

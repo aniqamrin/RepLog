@@ -1,9 +1,11 @@
 package com.replog.app.data.local
 
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Relation
 import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
@@ -29,7 +31,9 @@ data class DayMacroRow(
     val carbsG: Double?,
     val fatG: Double?,
     val fiberG: Double?
-)
+) {
+    val protein: Double get() = proteinG ?: 0.0
+}
 
 data class SetWithDay(
     val id: Long,
@@ -205,14 +209,14 @@ interface WorkoutDao {
 }
 
 data class WorkoutWithExercises(
-    @androidx.room.Embedded val workout: WorkoutEntity,
-    @androidx.Relation(entity = WorkoutExerciseEntity::class, parentColumn = "id", entityColumn = "workoutId")
+    @Embedded val workout: WorkoutEntity,
+    @Relation(entity = WorkoutExerciseEntity::class, parentColumn = "id", entityColumn = "workoutId")
     val exercises: List<WorkoutExerciseWithSets>
 )
 
 data class WorkoutExerciseWithSets(
-    @androidx.room.Embedded val exercise: WorkoutExerciseEntity,
-    @androidx.Relation(parentColumn = "id", entityColumn = "workoutExerciseId")
+    @Embedded val exercise: WorkoutExerciseEntity,
+    @Relation(parentColumn = "id", entityColumn = "workoutExerciseId")
     val sets: List<ExerciseSetEntity>
 )
 

@@ -115,12 +115,13 @@ class StatsRepository @Inject constructor(
         }
     }
 
-    private suspend fun cardioDistanceByDay(from: Long, to: Long): List<DayValueRow> =
-        cardioDao.totalDistanceBetween(from, to).let { _ -> emptyList() }
-            .ifEmpty { rawCardioRows(from, to) }
-
-    private suspend fun rawCardioRows(from: Long, to: Long): List<DayValueRow> {
-        return cardioDao.rawDistanceByDay(from, to)
+    private suspend fun cardioDistanceByDay(from: Long, to: Long): List<DayValueRow> {
+        val rows = cardioDao.rawDistanceByDay(from, to)
+        if (rows.isNotEmpty()) return rows
+        return cardioDao.totalDistanceBetween(from, to)
+            .takeIf { it > 0.0 }
+            ?.let { listOf(DayValueRow(to, it)) }
+            ?: emptyList()
     }
 
     suspend fun streaks(today: Long): Streaks {

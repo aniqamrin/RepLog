@@ -54,7 +54,7 @@ fun HeatmapCalendar(
 
     val columns: List<List<HeatCellData>> = remember(daysAscending, levels) {
         val levelByDay = levels
-        val cols = mutableListOf<HeatCellData>()
+        val cols = mutableListOf<List<HeatCellData>>()
         var current = mutableListOf<HeatCellData>()
         val firstDay = daysAscending.firstOrNull() ?: return@remember emptyList()
         val leadingPad = LocalDate.ofEpochDay(firstDay).dayOfWeek.value - 1

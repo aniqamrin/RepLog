@@ -131,7 +131,8 @@ class WorkoutRepository @Inject constructor(
 ) {
     fun observeRecent(limit: Int = 100): Flow<List<WorkoutEntity>> = workoutDao.observeRecent(limit)
 
-    fun observeWorkout(id: Long): Flow<WorkoutWithExercises?> = workoutDao.observeWithExercises(id)
+    fun observeWorkout(id: Long): Flow<com.replog.app.data.local.WorkoutWithExercises?> =
+        workoutDao.observeWithExercises(id)
 
     suspend fun save(draft: WorkoutDraft): Long {
         val workoutId = db.withTransaction {

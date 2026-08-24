@@ -35,7 +35,7 @@ object AiContextBuilder {
         append("}")
     }
 
-    private fun fmt(v: Double): String = (v * 10).roundToInt() / 10.0
+    private fun fmt(v: Double): String = ((v * 10).roundToInt() / 10.0).toString()
 }
 
 object InsightsGenerator {

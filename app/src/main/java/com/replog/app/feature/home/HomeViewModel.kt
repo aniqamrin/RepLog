@@ -69,7 +69,7 @@ class HomeViewModel @Inject constructor(
     activityRepository: ActivityRepository
 ) : ViewModel() {
 
-    private val today: Long = LocalDate.now().toEpochDay()
+    val today: Long = LocalDate.now().toEpochDay()
     val days365: List<Long> = (today - 364..today).toList()
 
     private val filter = MutableStateFlow<ActivityType?>(null)
@@ -105,7 +105,7 @@ class HomeViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     val heatmapState: StateFlow<HeatmapState> = combine(
-        statsRepository.observeEvents(today - 364, today),
+        activityRepository.observeRange(today - 364, today),
         profileRepository.observeGoals(),
         filter
     ) { events, goals, f ->
@@ -130,7 +130,7 @@ class HomeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            statsRepository.observeEvents(today - 7, today)
+            activityRepository.observeRange(today - 7, today)
                 .drop(1)
                 .collect { loadExtras() }
         }

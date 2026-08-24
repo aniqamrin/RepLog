@@ -132,7 +132,7 @@ fun LineChart(
 
 @Composable
 private fun MinMaxRow(min: Double, max: Double) {
-    val fmt = com.replog.app.util.Format.oneDecimal
+    val fmt = com.replog.app.util.Format::oneDecimal
     Row(Modifier.fillMaxWidth()) {
         Text(
             "low ${fmt(min)}",

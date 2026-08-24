@@ -29,7 +29,7 @@ fun ActivityEventEntity.toDomain() = ActivityEvent(
 @Singleton
 class ActivityRepository @Inject constructor(private val activityDao: ActivityDao) {
 
-    fun record(
+    suspend fun record(
         type: ActivityType,
         epochDay: Long,
         intensity: Int,

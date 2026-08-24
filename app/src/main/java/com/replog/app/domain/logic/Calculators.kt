@@ -110,7 +110,5 @@ object SummaryCalculator {
 
     fun isSameWeek(a: Long, b: Long): Boolean = a / 7 == b / 7
 
-    companion object {
-        val DAY_MS = DAY
-    }
+    val DAY_MS = DAY
 }

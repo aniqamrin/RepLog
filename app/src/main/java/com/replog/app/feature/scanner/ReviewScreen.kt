@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.replog.app.domain.logic.DetectedFood
 import com.replog.app.ui.components.EmptyState
 import com.replog.app.ui.components.RpCard
 import com.replog.app.ui.components.SectionHeader

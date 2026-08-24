@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.replog.app.domain.model.ActivityEvent
 import com.replog.app.domain.model.ActivityType
 import java.time.LocalDate
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
