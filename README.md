@@ -1,1 +1,1 @@
-A app i made for gym goers
+An app i made for gym goers
