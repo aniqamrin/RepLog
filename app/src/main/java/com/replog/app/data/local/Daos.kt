@@ -202,11 +202,20 @@ interface WorkoutDao {
     suspend fun setsForExercise(name: String): List<SetWithDay>
 
     @Query(
+        "SELECT e.workoutId AS workoutId, COALESCE(SUM(s.weightKg * s.reps), 0.0) AS volume " +
+            "FROM exercise_sets s INNER JOIN workout_exercises e ON s.workoutExerciseId = e.id " +
+            "GROUP BY e.workoutId"
+    )
+    suspend fun volumeByWorkout(): List<WorkoutVolumeRow>
+
+    @Query(
         "SELECT DISTINCT e.exerciseName FROM workout_exercises e INNER JOIN workouts w ON e.workoutId = w.id " +
             "ORDER BY w.epochDay DESC LIMIT :limit"
     )
     suspend fun recentExerciseNames(limit: Int): List<String>
 }
+
+data class WorkoutVolumeRow(val workoutId: Long, val volume: Double)
 
 data class WorkoutWithExercises(
     @Embedded val workout: WorkoutEntity,

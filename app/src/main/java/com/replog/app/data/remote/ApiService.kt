@@ -11,6 +11,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.Query
 import java.util.concurrent.TimeUnit
 
 @Serializable
@@ -61,7 +62,8 @@ data class SyncWorkout(
     val name: String,
     val type: String,
     val duration_min: Int,
-    val notes: String? = null
+    val notes: String? = null,
+    val volume_kg: Double = 0.0
 )
 
 @Serializable
@@ -96,6 +98,46 @@ data class VisionRequest(val image_base64: String, val prompt: String)
 @Serializable
 data class VisionResponseDto(val raw: String = "", val model: String = "")
 
+@Serializable
+data class FriendDto(
+    val id: Long,
+    val email: String,
+    val name: String,
+    val trained_today: Boolean = false,
+    val volume_today: Double = 0.0,
+    val week_volume: Double = 0.0
+)
+
+@Serializable
+data class FriendsResponse(
+    val friends: List<FriendDto> = emptyList(),
+    val incoming: List<FriendDto> = emptyList(),
+    val outgoing: List<FriendDto> = emptyList()
+)
+
+@Serializable
+data class FriendRequestRequest(val email: String)
+
+@Serializable
+data class FriendRespondRequest(val user_id: Long, val action: String)
+
+@Serializable
+data class FriendStatusResponse(val status: String = "")
+
+@Serializable
+data class LeaderboardEntryDto(
+    val id: Long,
+    val name: String,
+    val email: String,
+    val is_me: Boolean = false,
+    val trained_today: Boolean = false,
+    val volume_today: Double = 0.0,
+    val week_volume: Double = 0.0
+)
+
+@Serializable
+data class LeaderboardResponse(val entries: List<LeaderboardEntryDto> = emptyList())
+
 interface ApiService {
 
     @POST("api/auth/register")
@@ -115,6 +157,38 @@ interface ApiService {
 
     @POST("api/ai/vision")
     suspend fun analyzeFood(@Body body: VisionRequest): VisionResponseDto
+
+    @GET("api/friends")
+    suspend fun friends(
+        @Header("Authorization") token: String,
+        @Query("date") date: String,
+        @Query("week_start") weekStart: String
+    ): FriendsResponse
+
+    @POST("api/friends/request")
+    suspend fun friendRequest(
+        @Header("Authorization") token: String,
+        @Body body: FriendRequestRequest
+    ): FriendStatusResponse
+
+    @POST("api/friends/respond")
+    suspend fun friendRespond(
+        @Header("Authorization") token: String,
+        @Body body: FriendRespondRequest
+    ): FriendStatusResponse
+
+    @POST("api/friends/remove")
+    suspend fun friendRemove(
+        @Header("Authorization") token: String,
+        @Body body: FriendRespondRequest
+    ): FriendStatusResponse
+
+    @GET("api/friends/leaderboard")
+    suspend fun leaderboard(
+        @Header("Authorization") token: String,
+        @Query("date") date: String,
+        @Query("week_start") weekStart: String
+    ): LeaderboardResponse
 
     companion object {
         val json = Json {

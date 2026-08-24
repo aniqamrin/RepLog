@@ -72,6 +72,7 @@ class MainViewModel @Inject constructor(
         const val WORKOUT = "workout"
         const val PROGRESS = "progress"
         const val AI = "ai"
+        const val SOCIAL = "social"
         const val SETTINGS = "settings"
         const val SCANNER = "scanner"
         const val CREATE_WORKOUT = "create_workout"

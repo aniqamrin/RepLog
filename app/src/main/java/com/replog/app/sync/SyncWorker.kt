@@ -42,6 +42,7 @@ class SyncWorker @AssistedInject constructor(
             if (foodPending.isEmpty() && weights.isEmpty() && workouts.isEmpty()) {
                 return Result.success()
             }
+            val volumeByWorkout = db.workoutDao().volumeByWorkout().associate { it.workoutId to it.volume }
             val ack = api.sync(
                 "Bearer $token",
                 SyncBatchRequest(
@@ -50,7 +51,8 @@ class SyncWorker @AssistedInject constructor(
                     workouts = workouts.map { w ->
                         SyncWorkout(
                             client_id = w.id, date = epochDayToDate(w.epochDay),
-                            name = w.name, type = w.type, duration_min = w.durationMin, notes = w.notes
+                            name = w.name, type = w.type, duration_min = w.durationMin, notes = w.notes,
+                            volume_kg = volumeByWorkout[w.id] ?: 0.0
                         )
                     },
                     weight_entries = weights.map { w ->

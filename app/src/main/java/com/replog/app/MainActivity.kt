@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Psychology
@@ -55,6 +56,7 @@ import com.replog.app.feature.nutrition.NutritionScreen
 import com.replog.app.feature.progress.ProgressScreen
 import com.replog.app.feature.scanner.ScannerScreen
 import com.replog.app.feature.settings.SettingsScreen
+import com.replog.app.feature.social.SocialScreen
 import com.replog.app.feature.workout.CreateWorkoutScreen
 import com.replog.app.feature.workout.WorkoutDetailScreen
 import com.replog.app.feature.workout.WorkoutScreen
@@ -78,6 +80,11 @@ class MainActivity : ComponentActivity() {
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION), 1002)
         }
     }
 
@@ -111,6 +118,7 @@ fun RepLogApp(viewModel: MainViewModel) {
         TabItem(MainViewModel.Routes.NUTRITION, "Nutrition", Icons.Outlined.RestaurantMenu),
         TabItem(MainViewModel.Routes.WORKOUT, "Workout", Icons.Outlined.FitnessCenter),
         TabItem(MainViewModel.Routes.PROGRESS, "Progress", Icons.Outlined.BarChart),
+        TabItem(MainViewModel.Routes.SOCIAL, "Social", Icons.Outlined.Group),
         TabItem(MainViewModel.Routes.AI, "AI", Icons.Outlined.Psychology)
     )
 
@@ -213,6 +221,9 @@ fun RepLogApp(viewModel: MainViewModel) {
             }
             composable(MainViewModel.Routes.PROGRESS) {
                 ProgressScreen()
+            }
+            composable(MainViewModel.Routes.SOCIAL) {
+                SocialScreen()
             }
             composable(MainViewModel.Routes.AI) {
                 AiScreen(onScanFood = { navController.navigate(MainViewModel.Routes.SCANNER) })

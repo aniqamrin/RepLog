@@ -11,6 +11,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Constraints
 import com.replog.app.sync.ReminderWorker
+import com.replog.app.sync.StepCounterMonitor
 import com.replog.app.sync.SyncWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
@@ -20,6 +21,7 @@ import javax.inject.Inject
 class RepLogApp : Application(), Configuration.Provider {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
+    @Inject lateinit var stepCounterMonitor: StepCounterMonitor
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
@@ -30,6 +32,7 @@ class RepLogApp : Application(), Configuration.Provider {
         super.onCreate()
         createNotificationChannels()
         scheduleBackgroundWork()
+        stepCounterMonitor.start()
     }
 
     private fun createNotificationChannels() {
