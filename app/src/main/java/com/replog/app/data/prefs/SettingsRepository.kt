@@ -20,8 +20,14 @@ data class AppSettings(
     val remindWorkout: Boolean = true,
     val remindWater: Boolean = false,
     val remindCheckIn: Boolean = true,
-    val backendConfigured: Boolean = false
-)
+    val backendConfigured: Boolean = false,
+    val aiApiKey: String = "",
+    val aiBaseUrl: String = "https://api.openai.com/v1",
+    val aiChatModel: String = "gpt-4o-mini",
+    val aiVisionModel: String = "gpt-4o-mini"
+) {
+    val aiConfigured: Boolean get() = aiApiKey.isNotBlank()
+}
 
 @Singleton
 class SettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
@@ -34,6 +40,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val REMIND_WATER = booleanPreferencesKey("remind_water")
         val REMIND_CHECKIN = booleanPreferencesKey("remind_checkin")
         val BACKEND_CONFIGURED = booleanPreferencesKey("backend_configured")
+        val AI_API_KEY = stringPreferencesKey("ai_api_key")
+        val AI_BASE_URL = stringPreferencesKey("ai_base_url")
+        val AI_CHAT_MODEL = stringPreferencesKey("ai_chat_model")
+        val AI_VISION_MODEL = stringPreferencesKey("ai_vision_model")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { p ->
@@ -44,8 +54,27 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             remindWorkout = p[Keys.REMIND_WORKOUT] ?: true,
             remindWater = p[Keys.REMIND_WATER] ?: false,
             remindCheckIn = p[Keys.REMIND_CHECKIN] ?: true,
-            backendConfigured = p[Keys.BACKEND_CONFIGURED] ?: false
+            backendConfigured = p[Keys.BACKEND_CONFIGURED] ?: false,
+            aiApiKey = p[Keys.AI_API_KEY] ?: "",
+            aiBaseUrl = p[Keys.AI_BASE_URL]?.takeIf { it.isNotBlank() } ?: "https://api.openai.com/v1",
+            aiChatModel = p[Keys.AI_CHAT_MODEL]?.takeIf { it.isNotBlank() } ?: "gpt-4o-mini",
+            aiVisionModel = p[Keys.AI_VISION_MODEL]?.takeIf { it.isNotBlank() } ?: "gpt-4o-mini"
         )
+    }
+
+    suspend fun setAiConfig(apiKey: String, baseUrl: String, chatModel: String, visionModel: String) {
+        context.dataStore.edit {
+            it[Keys.AI_API_KEY] = apiKey.trim()
+            it[Keys.AI_BASE_URL] = baseUrl.trim()
+            it[Keys.AI_CHAT_MODEL] = chatModel.trim()
+            it[Keys.AI_VISION_MODEL] = visionModel.trim()
+        }
+    }
+
+    suspend fun clearAiConfig() {
+        context.dataStore.edit {
+            it[Keys.AI_API_KEY] = ""
+        }
     }
 
     suspend fun setThemeDark(dark: Boolean) =

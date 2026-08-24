@@ -74,10 +74,11 @@ class ScannerViewModel @Inject constructor(
     private fun scanErrorHint(e: Throwable): String =
         if (e is UnsupportedOperationException || e.message?.contains("backend", ignoreCase = true) == true ||
             e.message?.contains("Failed to connect", ignoreCase = true) == true ||
-            e.message?.contains("Unable to resolve", ignoreCase = true) == true
+            e.message?.contains("Unable to resolve", ignoreCase = true) == true ||
+            e.message?.contains("AI provider", ignoreCase = true) == true
         ) {
-            "Food scanning needs the REPLOG backend with an AI vision model configured. " +
-                "You can still log this meal manually via Log Food."
+            "Food scanning needs an AI vision model. Paste your own OpenAI-compatible API key in " +
+                "Settings → AI COACH to enable it. You can still log this meal manually via Log Food."
         } else {
             e.message ?: "Analysis failed"
         }

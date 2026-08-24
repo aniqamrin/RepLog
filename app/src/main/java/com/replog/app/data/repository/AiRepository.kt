@@ -18,6 +18,7 @@ class AiRepository @Inject constructor(
     private val aiDao: AiDao,
     private val remoteApi: ApiService,
     private val localAiService: com.replog.app.data.ai.LocalAiService,
+    private val directAiClient: com.replog.app.data.ai.DirectAiClient,
     private val settingsRepository: SettingsRepository
 ) {
     fun observeLatestConversation(): Flow<AiConversationEntity?> = aiDao.observeLatestConversation()
@@ -51,16 +52,29 @@ class AiRepository @Inject constructor(
             .dropLast(1)
             .map { it.role to it.content }
 
+        val contextJson = AiPromptFactory.contextFor(snapshot)
         val reply = try {
-            val response = remoteApi.chat(
-                com.replog.app.data.remote.ChatRequest(
-                    messages = AiPromptFactory.buildMessages(history, question),
-                    context = AiPromptFactory.contextFor(snapshot),
-                    mode = "coach"
+            val settings = settingsRepository.settings.first()
+            if (settings.aiConfigured) {
+                directAiClient.chat(
+                    apiKey = settings.aiApiKey,
+                    baseUrl = settings.aiBaseUrl,
+                    model = settings.aiChatModel,
+                    history = history,
+                    question = question,
+                    context = contextJson
+                ).getOrThrow()
+            } else {
+                val response = remoteApi.chat(
+                    com.replog.app.data.remote.ChatRequest(
+                        messages = AiPromptFactory.buildMessages(history, question),
+                        context = contextJson,
+                        mode = "coach"
+                    )
                 )
-            )
-            if (response.reply.isBlank()) throw IllegalStateException("Empty AI reply")
-            response.reply.trim()
+                if (response.reply.isBlank()) throw IllegalStateException("Empty AI reply")
+                response.reply.trim()
+            }
         } catch (e: Exception) {
             localAiService.chat(question, history, snapshot)
                 .getOrElse { "Sorry — I couldn't process that right now." }
@@ -76,6 +90,16 @@ class AiRepository @Inject constructor(
     }
 
     suspend fun analyzeFood(base64Image: String): Result<String> {
+        val settings = settingsRepository.settings.first()
+        if (settings.aiConfigured) {
+            return directAiClient.vision(
+                apiKey = settings.aiApiKey,
+                baseUrl = settings.aiBaseUrl,
+                model = settings.aiVisionModel,
+                imageBase64 = base64Image,
+                prompt = AiPromptFactory.visionPrompt()
+            )
+        }
         return try {
             val response = remoteApi.analyzeFood(
                 com.replog.app.data.remote.VisionRequest(

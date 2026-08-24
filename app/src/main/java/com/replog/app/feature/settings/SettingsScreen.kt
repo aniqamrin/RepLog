@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -113,6 +114,7 @@ fun SettingsScreen(
                 }
             }
         }
+        item { AiProviderCard(viewModel) }
         item { AuthCard(auth, viewModel) }
         item {
             RpCard(Modifier.fillMaxWidth()) {
@@ -215,6 +217,83 @@ private fun NumberGoalRow(label: String, value: String, onChange: (String) -> Un
 }
 
 @Composable
+private fun AiProviderCard(viewModel: SettingsViewModel) {
+    val ai by viewModel.aiConfig.collectAsStateWithLifecycle()
+    var apiKey by remember { mutableStateOf("") }
+    var baseUrl by remember(ai.baseUrl) { mutableStateOf(ai.baseUrl) }
+    var chatModel by remember(ai.chatModel) { mutableStateOf(ai.chatModel) }
+    var visionModel by remember(ai.visionModel) { mutableStateOf(ai.visionModel) }
+
+    RpCard(Modifier.fillMaxWidth()) {
+        Column {
+            SectionHeader("AI COACH")
+            if (ai.active) {
+                Text(
+                    "AI is active with your own API key — chat and food scanning are enabled.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(6.dp))
+            } else {
+                Text(
+                    "No key set. The coach falls back to basic offline answers and food scanning is disabled.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(6.dp))
+            }
+            OutlinedTextField(
+                value = apiKey,
+                onValueChange = { apiKey = it },
+                label = { Text("API key") },
+                placeholder = { Text(if (ai.active) "Saved — enter to replace" else "sk-…") },
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = baseUrl,
+                onValueChange = { baseUrl = it },
+                label = { Text("Base URL (OpenAI-compatible)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = chatModel,
+                onValueChange = { chatModel = it },
+                label = { Text("Chat model") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = visionModel,
+                onValueChange = { visionModel = it },
+                label = { Text("Vision model (food scanning)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    viewModel.updateAiConfig {
+                        it.copy(apiKey = apiKey, baseUrl = baseUrl, chatModel = chatModel, visionModel = visionModel)
+                    }
+                    viewModel.saveAiConfig()
+                    apiKey = ""
+                },
+                enabled = ai.active || apiKey.isNotBlank(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Save AI settings")
+            }
+        }
+    }
+}
+
+@Composable
 private fun AuthCard(auth: AuthUiState, viewModel: SettingsViewModel) {
     RpCard(Modifier.fillMaxWidth()) {
         Column {
@@ -269,7 +348,7 @@ private fun AuthCard(auth: AuthUiState, viewModel: SettingsViewModel) {
                     Text(if (auth.busy) "Please wait…" else if (auth.mode == "register") "Create account" else "Sign in")
                 }
                 Text(
-                    "Optional. The app works fully offline; signing in enables sync and cloud AI.",
+                    "Optional. The app works fully offline; signing in enables sync. For AI, paste your own API key above.",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 6.dp)

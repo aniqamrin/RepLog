@@ -18,6 +18,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -29,6 +30,15 @@ data class AuthUiState(
     val busy: Boolean = false,
     val error: String? = null,
     val loggedInEmail: String? = null
+)
+
+data class AiConfigUiState(
+    val apiKey: String = "",
+    val baseUrl: String = "https://api.openai.com/v1",
+    val chatModel: String = "gpt-4o-mini",
+    val visionModel: String = "gpt-4o-mini",
+    val saved: Boolean = false,
+    val active: Boolean = false
 )
 
 @HiltViewModel
@@ -46,6 +56,26 @@ class SettingsViewModel @Inject constructor(
 
     private val _authState = MutableStateFlow(AuthUiState(loggedInEmail = tokenStore.email))
     val authState: StateFlow<AuthUiState> = _authState
+
+    private val _aiConfig = MutableStateFlow(AiConfigUiState())
+    val aiConfig: StateFlow<AiConfigUiState> = _aiConfig
+
+    init {
+        viewModelScope.launch {
+            settingsRepository.settings.collect { s ->
+                _aiConfig.value = _aiConfig.value.copy(
+                    baseUrl = if (_aiConfig.value.saved) _aiConfig.value.baseUrl else s.aiBaseUrl,
+                    chatModel = if (_aiConfig.value.saved) _aiConfig.value.chatModel else s.aiChatModel,
+                    visionModel = if (_aiConfig.value.saved) _aiConfig.value.visionModel else s.aiVisionModel,
+                    active = s.aiConfigured
+                )
+            }
+        }
+        viewModelScope.launch {
+            val s = settingsRepository.settings.first()
+            _aiConfig.value = _aiConfig.value.copy(baseUrl = s.aiBaseUrl, chatModel = s.aiChatModel, visionModel = s.aiVisionModel)
+        }
+    }
 
     private val _statusMessage = MutableStateFlow<String?>(null)
     val statusMessage: StateFlow<String?> = _statusMessage
@@ -82,6 +112,26 @@ class SettingsViewModel @Inject constructor(
 
     fun clearAiChat() {
         viewModelScope.launch { aiClear.clearAll() }
+    }
+
+    fun updateAiConfig(transform: (AiConfigUiState) -> AiConfigUiState) {
+        _aiConfig.value = transform(_aiConfig.value).copy(saved = false)
+    }
+
+    fun saveAiConfig() {
+        val c = _aiConfig.value
+        viewModelScope.launch {
+            settingsRepository.setAiConfig(c.apiKey, c.baseUrl, c.chatModel, c.visionModel)
+            val active = settingsRepository.settings.first().aiConfigured
+            _aiConfig.value = _aiConfig.value.copy(
+                saved = true,
+                apiKey = "",
+                active = active,
+                baseUrl = settingsRepository.settings.first().aiBaseUrl,
+                chatModel = settingsRepository.settings.first().aiChatModel,
+                visionModel = settingsRepository.settings.first().aiVisionModel
+            )
+        }
     }
 
     fun updateAuth(transform: (AuthUiState) -> AuthUiState) {
