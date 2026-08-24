@@ -1,0 +1,19 @@
+{
+  "name": "replog-backend",
+  "version": "1.0.0",
+  "description": "REPLOG backend: auth, cloud sync, and AI coach (chat + food vision) for the RepLog Android app",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}
