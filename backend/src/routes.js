@@ -71,7 +71,8 @@ const cleanWorkout = (w) => ({
   name: String(w?.name || "Workout").slice(0, 200),
   type: String(w?.type || "strength").slice(0, 40),
   duration_min: Math.trunc(numOr(w?.duration_min, 0)),
-  notes: w?.notes == null ? null : String(w.notes).slice(0, 2000)
+  notes: w?.notes == null ? null : String(w.notes).slice(0, 2000),
+  volume_kg: numOr(w?.volume_kg, 0)
 });
 
 const cleanWeight = (w) => ({
@@ -95,11 +96,12 @@ router.post("/sync", requireAuth, (req, res) => {
       fat_g=excluded.fat_g, fiber_g=excluded.fiber_g, updated_at=datetime('now')
   `);
   const insertWorkout = db.prepare(`
-    INSERT INTO workouts (user_id, client_id, date, name, type, duration_min, notes)
-    VALUES (@user_id, @client_id, @date, @name, @type, @duration_min, @notes)
+    INSERT INTO workouts (user_id, client_id, date, name, type, duration_min, notes, volume_kg)
+    VALUES (@user_id, @client_id, @date, @name, @type, @duration_min, @notes, @volume_kg)
     ON CONFLICT (user_id, client_id) DO UPDATE SET
       date=excluded.date, name=excluded.name, type=excluded.type,
-      duration_min=excluded.duration_min, notes=excluded.notes, updated_at=datetime('now')
+      duration_min=excluded.duration_min, notes=excluded.notes, volume_kg=excluded.volume_kg,
+      updated_at=datetime('now')
   `);
   const insertWeight = db.prepare(`
     INSERT INTO weight_entries (user_id, date, weight_kg, body_fat_pct)
@@ -128,6 +130,136 @@ router.post("/sync", requireAuth, (req, res) => {
   })();
 
   res.json({ accepted, server_time: new Date().toISOString() });
+});
+
+router.get("/friends", requireAuth, (req, res) => {
+  const today = String(req.query.date || "").slice(0, 10);
+  const weekStart = String(req.query.week_start || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) return bad(res, 400, "date=YYYY-MM-DD required");
+  const ws = /^\d{4}-\d{2}-\d{2}$/.test(weekStart) ? weekStart : today;
+
+  const statsStmt = db.prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN date = ? THEN volume_kg ELSE 0 END), 0) AS volume_today,
+      COALESCE(SUM(CASE WHEN date BETWEEN ? AND ? THEN volume_kg ELSE 0 END), 0) AS week_volume,
+      MAX(CASE WHEN date = ? THEN 1 ELSE 0 END) AS trained_today
+    FROM workouts WHERE user_id = ?
+  `);
+
+  const baseSelect =
+    "SELECT u.id, u.email, u.name FROM friendships f JOIN users u ON u.id = ";
+
+  const friends = db.prepare(baseSelect + "f.friend_id WHERE f.user_id = ? AND f.status = 'accepted'")
+    .all(req.userId)
+    .map((r) => {
+      const s = statsStmt.get(today, ws, today, today, r.id);
+      return {
+        ...r,
+        trained_today: Boolean(s.trained_today),
+        volume_today: s.volume_today || 0,
+        week_volume: s.week_volume || 0
+      };
+    });
+  const incoming = db.prepare(baseSelect + "f.user_id WHERE f.friend_id = ? AND f.status = 'pending'")
+    .all(req.userId);
+  const outgoing = db.prepare(baseSelect + "f.friend_id WHERE f.user_id = ? AND f.status = 'pending'")
+    .all(req.userId);
+
+  res.json({ friends, incoming, outgoing });
+});
+
+router.post("/friends/request", requireAuth, (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const target = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+  if (!target) return bad(res, 404, "No REPLOG account with that email");
+  if (target.id === req.userId) return bad(res, 400, "You cannot add yourself");
+  const existing = db
+    .prepare("SELECT * FROM friendships WHERE user_id = ? AND friend_id = ?")
+    .get(req.userId, target.id);
+  if (existing?.status === "accepted") return bad(res, 409, "Already friends");
+  if (existing) return bad(res, 409, "Request already sent");
+  const reverse = db
+    .prepare("SELECT * FROM friendships WHERE user_id = ? AND friend_id = ?")
+    .get(target.id, req.userId);
+  if (reverse?.status === "pending") {
+    db.transaction(() => {
+      db.prepare("UPDATE friendships SET status = 'accepted' WHERE id = ?").run(reverse.id);
+      db.prepare(
+        "INSERT INTO friendships (user_id, friend_id, status) VALUES (?, ?, 'accepted') " +
+          "ON CONFLICT (user_id, friend_id) DO UPDATE SET status = 'accepted'"
+      ).run(req.userId, target.id);
+    })();
+    return res.json({ status: "accepted" });
+  }
+  db.prepare("INSERT INTO friendships (user_id, friend_id) VALUES (?, ?)").run(req.userId, target.id);
+  res.status(201).json({ status: "pending" });
+});
+
+router.post("/friends/respond", requireAuth, (req, res) => {
+  const fromId = Math.trunc(numOr(req.body?.user_id, 0));
+  const action = String(req.body?.action || "");
+  if (!fromId || !["accept", "decline"].includes(action)) {
+    return bad(res, 400, "user_id and action (accept|decline) required");
+  }
+  const row = db
+    .prepare("SELECT * FROM friendships WHERE user_id = ? AND friend_id = ? AND status = 'pending'")
+    .get(fromId, req.userId);
+  if (!row) return bad(res, 404, "No pending request from that user");
+  if (action === "accept") {
+    db.transaction(() => {
+      db.prepare("UPDATE friendships SET status = 'accepted' WHERE id = ?").run(row.id);
+      db.prepare(
+        "INSERT INTO friendships (user_id, friend_id, status) VALUES (?, ?, 'accepted') " +
+          "ON CONFLICT (user_id, friend_id) DO UPDATE SET status = 'accepted'"
+      ).run(req.userId, fromId);
+    })();
+    return res.json({ status: "accepted" });
+  }
+  db.prepare("DELETE FROM friendships WHERE id = ?").run(row.id);
+  res.json({ status: "declined" });
+});
+
+router.post("/friends/remove", requireAuth, (req, res) => {
+  const friendId = Math.trunc(numOr(req.body?.user_id, 0));
+  if (!friendId) return bad(res, 400, "user_id required");
+  db.prepare("DELETE FROM friendships WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)")
+    .run(req.userId, friendId, friendId, req.userId);
+  res.json({ removed: true });
+});
+
+router.get("/friends/leaderboard", requireAuth, (req, res) => {
+  const today = String(req.query.date || "").slice(0, 10);
+  const weekStart = String(req.query.week_start || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) return bad(res, 400, "date=YYYY-MM-DD required");
+  const ws = /^\d{4}-\d{2}-\d{2}$/.test(weekStart) ? weekStart : today;
+
+  const ids = db.prepare(`
+    SELECT CASE WHEN user_id = ? THEN friend_id ELSE user_id END AS other_id
+    FROM friendships WHERE status = 'accepted' AND (user_id = ? OR friend_id = ?)
+  `).all(req.userId, req.userId, req.userId).map((r) => r.other_id);
+  ids.push(req.userId);
+
+  const placeholders = ids.map(() => "?").join(",");
+  const rows = db.prepare(`
+    SELECT u.id, u.name, u.email,
+      COALESCE(SUM(CASE WHEN w.date = ? THEN w.volume_kg ELSE 0 END), 0) AS volume_today,
+      COALESCE(SUM(CASE WHEN w.date BETWEEN ? AND ? THEN w.volume_kg ELSE 0 END), 0) AS week_volume,
+      MAX(CASE WHEN w.date = ? THEN 1 ELSE 0 END) AS trained_today
+    FROM users u LEFT JOIN workouts w ON w.user_id = u.id AND w.type = 'strength'
+    WHERE u.id IN (${placeholders})
+    GROUP BY u.id
+  `).all(today, ws, today, today, ...ids);
+
+  const entries = rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    is_me: r.id === req.userId,
+    trained_today: Boolean(r.trained_today),
+    volume_today: r.volume_today || 0,
+    week_volume: r.week_volume || 0
+  })).sort((a, b) => b.week_volume - a.week_volume || b.volume_today - a.volume_today);
+  res.json({ entries });
 });
 
 router.post("/ai/chat", async (req, res, next) => {

@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS workouts (
   type TEXT NOT NULL DEFAULT 'strength',
   duration_min INTEGER NOT NULL DEFAULT 0,
   notes TEXT,
+  volume_kg REAL,
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (user_id, client_id)
 );
@@ -53,4 +54,18 @@ CREATE TABLE IF NOT EXISTS weight_entries (
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (user_id, date)
 );
+
+CREATE TABLE IF NOT EXISTS friendships (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  friend_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (user_id, friend_id)
+);
 `);
+
+const workoutCols = db.pragma("table_info(workouts)");
+if (!workoutCols.some((c) => c.name === "volume_kg")) {
+  db.exec("ALTER TABLE workouts ADD COLUMN volume_kg REAL");
+}
